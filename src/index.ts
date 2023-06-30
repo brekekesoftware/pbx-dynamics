@@ -4,7 +4,7 @@ const getCRMHost = () => new URL(location.href).searchParams.get('crm');
 
 const setupOpenCti = () => {
   return new Promise<void>((resolve) => {
-    const host = location.ancestorOrigins?.[0] ?? getCRMHost() ?? document.body.dataset['dynamics-host'];
+    const host = getCRMHost() ?? location.ancestorOrigins?.[0] ?? document.body.dataset['dynamics-host'];
     const scriptSrc = `${host}/webresources/Widget/msdyn_ciLibrary.js`;
 
     // load dynamics 365 api script
