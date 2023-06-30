@@ -4,7 +4,7 @@ const getCRMHost = () => new URL(location.href).searchParams.get('crm');
 
 const setupOpenCti = () => {
   return new Promise<void>((resolve) => {
-    const host = getCRMHost() ?? location.ancestorOrigins?.[0] ?? document.body.dataset['dynamics-host'];
+    const host = getCRMHost() ?? location.ancestorOrigins?.[0];
     const scriptSrc = `${host}/webresources/Widget/msdyn_ciLibrary.js`;
 
     // load dynamics 365 api script
@@ -45,7 +45,7 @@ setupOpenCti().then(() => {
      }) => {
       let clickData: ClickToActPayload | undefined;
       let currentCall: Call | undefined;
-      let environment: Environment | undefined;
+      let environment: Environment;
 
       // add click-to-call listener
       Microsoft.CIFramework.addHandler('onclicktoact', payload => {
@@ -153,7 +153,7 @@ setupOpenCti().then(() => {
             phonecall_activity_parties: [
               {
                 participationtypemask: call.incoming ? 2 : 1,
-                'partyid_systemuser@odata.bind': `/systemusers(${environment?.userId.replace('{', '').replace('}', '')})`,
+                'partyid_systemuser@odata.bind': `/systemusers(${environment.userId.replace('{', '').replace('}', '')})`,
               },
               {
                 participationtypemask: call.incoming ? 1 : 2,
