@@ -7,7 +7,7 @@ const setupOpenCti = () => {
     const host = location.ancestorOrigins?.[0] ?? getCRMHost() ?? document.body.dataset['dynamics-host'];
     const scriptSrc = `${host}/webresources/Widget/msdyn_ciLibrary.js`;
 
-    // load salesforce opencti script
+    // load dynamics 365 api script
     const script = document.createElement('script');
     script.src = scriptSrc;
     script.type = 'text/javascript';
@@ -55,25 +55,12 @@ setupOpenCti().then(() => {
         fireMakeCallEvent(params.value);
       });
 
-      // sforce.opencti.onNavigationChange({
-      //   listener: (payload) => {
-      //     console.log('onNavigationChange', payload);
-      //
-      //     if (currentCall && payload.objectType) {
-      //       fireCallInfoEvent(currentCall, {
-      //         id: payload.recordId,
-      //         name: formatRecordName(payload.recordName, payload.objectType),
-      //       });
-      //     }
-      //   },
-      // });
-
       onLoggedInEvent(() => {
         console.log('logged in! enable click to act');
         void Microsoft.CIFramework.setClickToAct(true)
           .then(
             () => console.log('click to act enabled'),
-            () => console.log('click to act enable failed')
+            () => console.log('click to act enable failed'),
           );
 
         Microsoft.CIFramework.getEnvironment().then(res => {
@@ -128,7 +115,7 @@ setupOpenCti().then(() => {
                 });
             }
           });
-      }
+      };
 
       onCallEvent(({ call }) => {
         console.log('onCallEvent', call);
@@ -204,21 +191,22 @@ interface ClickToActPayload {
   recordTitle: string;
 }
 
+// {"appUrl":"https://org09b9d616.crm4.dynamics.com/main.aspx?appid=802b8bcd-710d-ee11-8f6d-002248803266","appid":"802b8bcd-710d-ee11-8f6d-002248803266","cifVersion":"9.2.0.49","clientUrl":"https://org09b9d616.crm4.dynamics.com","crmVersion":"9.2.23055.00200","customParams":null,"etn":"contact","id":"674f8695-1416-ee11-8f6d-000d3a4808bc","isDirty":false,"orgId":"ba7fd0b1-3511-ee11-a66b-000d3a48f47a","orgLcid":1033,"orgUniqueName":"unqba7fd0b13511ee11a66b000d3a48f","pagetype":"entityrecord","userId":"{A8177E6E-4D0D-EE11-8F6D-002248803266}","userLcid":1033,"username":"Akpesiri Okorigba"}
 interface Environment {
-  appUrl: "https://org09b9d616.crm4.dynamics.com/main.aspx?appid=802b8bcd-710d-ee11-8f6d-002248803266"
-  appid: "802b8bcd-710d-ee11-8f6d-002248803266"
-  cifVersion: "9.2.0.49"
-  clientUrl: "https://org09b9d616.crm4.dynamics.com"
-  crmVersion: "9.2.23055.00200"
-  customParams: null
-  etn: "contact"
-  id: "674f8695-1416-ee11-8f6d-000d3a4808bc"
-  isDirty: false
-  orgId: "ba7fd0b1-3511-ee11-a66b-000d3a48f47a"
-  orgLcid: 1033
-  orgUniqueName: "unqba7fd0b13511ee11a66b000d3a48f"
-  pagetype: "entityrecord"
-  userId: "{A8177E6E-4D0D-EE11-8F6D-002248803266}"
-  userLcid: 1033
-  username: "Akpesiri Okorigba"
+  appUrl: string;
+  appid: string;
+  cifVersion: string;
+  clientUrl: string;
+  crmVersion: string;
+  customParams: unknown;
+  etn: string;
+  id: string;
+  isDirty: boolean;
+  orgId: string;
+  orgLcid: number;
+  orgUniqueName: string;
+  pagetype: string;
+  userId: string;
+  userLcid: number;
+  username: string;
 }
