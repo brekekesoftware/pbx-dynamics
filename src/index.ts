@@ -36,6 +36,7 @@ setupOpenCti().then(() => {
        fireCallInfoEvent,
        fireLogSavedEvent,
        fireMakeCallEvent,
+       onCallRecordedEvent,
        onCallUpdatedEvent,
        onCallEndedEvent,
        onLoggedOutEvent,
@@ -46,6 +47,7 @@ setupOpenCti().then(() => {
       let clickData: ClickToActPayload | undefined;
       let currentCall: Call | undefined;
       let environment: Environment;
+      const callRecordingURLs = new Map<string, string>();
 
       // add click-to-call listener
       Microsoft.CIFramework.addHandler('onclicktoact', payload => {
@@ -71,6 +73,7 @@ setupOpenCti().then(() => {
 
       onLoggedOutEvent(() => {
         currentCall = undefined;
+        callRecordingURLs.clear();
         console.log('logged out! disable click to act');
         void Microsoft.CIFramework.setClickToAct(false)
           .then(
@@ -79,8 +82,8 @@ setupOpenCti().then(() => {
           );
       });
 
-      onCallUpdatedEvent(({ call }) => void (currentCall = call));
-      onCallEndedEvent(({ call }) => {
+      onCallUpdatedEvent(call => void (currentCall = call));
+      onCallEndedEvent(call => {
         if (call.id === currentCall?.id) {
           currentCall = undefined;
         }
@@ -117,7 +120,7 @@ setupOpenCti().then(() => {
           });
       };
 
-      onCallEvent(({ call }) => {
+      onCallEvent(call => {
         console.log('onCallEvent', call);
 
         // dock the panel
@@ -134,7 +137,12 @@ setupOpenCti().then(() => {
         }
       });
 
-      onLogEvent(({ log }) => {
+      onCallRecordedEvent(record => {
+        console.log('call recorded', record);
+        callRecordingURLs.set(record.roomId, record.recordingURL);
+      });
+
+      onLogEvent(log => {
         console.log('logEvent', log);
         const call = log.call;
 
@@ -160,13 +168,14 @@ setupOpenCti().then(() => {
                 [`partyid_${log.recordType}@odata.bind`]: `/${log.recordType}s(${log.recordId})`,
               },
             ],
-            // new_recordingfile: `${log.tenant} ${call.pbxRoomId} ${log.user}`,
+            new_recordingfile: callRecordingURLs.get(call.pbxRoomId),
 
             // statecode: 'Completed',
           }),
         )
           .then(value => {
             fireLogSavedEvent(log);
+            callRecordingURLs.delete(call.pbxRoomId);
             const record = JSON.parse(value);
             console.log('createRecord', record);
           });
