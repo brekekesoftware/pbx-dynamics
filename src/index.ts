@@ -131,8 +131,22 @@ setupOpenCti().then(() => {
           })
       };
 
-      const search = (call: Call, create = true) => {
+      onCallEvent(call => {
+        console.log('onCallEvent', call);
+
+        // dock the panel
+        void Microsoft.CIFramework.setMode(1);
         const phone = call.partyNumber;
+
+        if (phone === clickData?.value) {
+          fireCallInfoEvent(call, {
+            id: clickData.entityId,
+            name: clickData.recordTitle,
+            type: clickData.entityLogicalName,
+          });
+
+          return;
+        }
 
         Promise.all([searchContacts(phone), searchAccounts(phone)])
           .then(([contact, account]) => {
@@ -142,33 +156,17 @@ setupOpenCti().then(() => {
 
             if (allContacts.length > 0) {
               fireCallInfoEvent(call, allContacts);
-            } else if (create) {
-              Microsoft.CIFramework.createRecord('contact', JSON.stringify({ mobilephone: phone }))
-                .then(value => {
-                  const record = JSON.parse(value);
-                  console.log('createRecord', record);
-                  searchContacts(phone).then(contact => fireCallInfoEvent(call, contact));
-                });
+              return;
             }
+
+            Microsoft.CIFramework.createRecord('contact', JSON.stringify({ mobilephone: phone }))
+              .then(value => {
+                const record = JSON.parse(value);
+                console.log('createRecord', record);
+                searchContacts(phone).then(contact => fireCallInfoEvent(call, contact));
+              });
           })
           .catch(e => console.log('search error', e));
-      };
-
-      onCallEvent(call => {
-        console.log('onCallEvent', call);
-
-        // dock the panel
-        void Microsoft.CIFramework.setMode(1);
-
-        if (call.partyNumber === clickData?.value) {
-          fireCallInfoEvent(call, {
-            id: clickData.entityId,
-            name: clickData.recordTitle,
-            type: clickData.entityLogicalName,
-          });
-        } else {
-          search(call);
-        }
       });
 
       onContactSelectedEvent(({ contact }) => openRecord(contact.id, contact.type));
