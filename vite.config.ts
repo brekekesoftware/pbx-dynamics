@@ -24,7 +24,7 @@ function htmlCacheBusterPlugin(assets: string[] = []): PluginOption {
   const assetsRegex = new RegExp(`(?<=(?:src|href)=")(?!https?)(.*?(?:${assets.join('|')}))(?=")`, 'g');
 
   return {
-    name: 'html:cache-buster',
+    name: 'html:static-asset-versioning',
     apply: 'build',
     enforce: 'post',
     transformIndexHtml: (html, ctx) => {
@@ -42,8 +42,6 @@ function htmlCacheBusterPlugin(assets: string[] = []): PluginOption {
 
         return `${substring}?v=${stats.mtime.valueOf()}`;
       });
-
-      return html.replace(assetsRegex, `$1?v=${Date.now()}`);
     },
   };
 }
