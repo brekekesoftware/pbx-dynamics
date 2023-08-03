@@ -1,3 +1,4 @@
+import { Contact } from '@core/types/events';
 import { Call } from '@core/types/phone';
 
 const getCRMHost = () => new URL(location.href).searchParams.get('crm');
@@ -43,6 +44,7 @@ setupOpenCti().then(() => {
        onLoggedInEvent,
        onCallEvent,
        onLogEvent,
+       onContactSelectedEvent,
      }) => {
       let clickData: ClickToActPayload | undefined;
       let currentCall: Call | undefined;
@@ -93,22 +95,40 @@ setupOpenCti().then(() => {
         }
       });
 
+      const mapContactResult = (contact: any): Contact => ({
+        id: contact.contactid,
+        name: contact.fullname,
+        type: 'contact',
+      });
+
+      const mapAccountResult = (account: any): Contact => ({
+        id: account.accountid,
+        name: account.name,
+        type: 'account',
+      });
+
+      const openRecord = (id: string, type: string = 'contact') => {
+        void Microsoft.CIFramework.searchAndOpenRecords(type, `?$filter=${type}id eq ${id}`, false);
+      };
+
       const search = (call: Call, create = true) => {
         const phone = call.partyNumber;
-        let query = `?$select=fullname,mobilephone&$filter=mobilephone eq '${phone}'&$search=${phone}`;
+        let contactsQuery = `?$select=fullname,mobilephone&$filter=mobilephone eq '${phone}' or telephone1 eq '${phone}'&$search=${phone}`;
+        let accountsQuery = `?$select=name,telephone1&$filter=telephone1 eq '${phone}'&$search=${phone}`;
 
-        Microsoft.CIFramework.searchAndOpenRecords('contact', query, false)
-          .then(value => {
-            const records = JSON.parse(value);
-            console.log('searchAndOpenRecords', records);
+        Promise.all([
+          Microsoft.CIFramework.searchAndOpenRecords('contact', contactsQuery, false)
+            .then(result => Object.values(JSON.parse(result)).map(mapContactResult)),
+          Microsoft.CIFramework.searchAndOpenRecords('account', accountsQuery, false)
+            .then(result => Object.values(JSON.parse(result)).map(mapAccountResult)),
+        ])
+          .then(([contact, account]) => {
+            const allContacts = [...contact, ...account];
 
-            if (Object.keys(records).length > 0) {
-              const record = records[0];
-              fireCallInfoEvent(call, {
-                id: record.contactid,
-                name: record.fullname,
-                type: 'contact',
-              });
+            console.log('searchAndOpenRecords', allContacts);
+
+            if (allContacts.length > 0) {
+              fireCallInfoEvent(call, allContacts);
             } else if (create) {
               Microsoft.CIFramework.createRecord('contact', JSON.stringify({ mobilephone: phone }))
                 .then(value => {
@@ -117,7 +137,8 @@ setupOpenCti().then(() => {
                   search(call, false);
                 });
             }
-          });
+          })
+          .catch(e => console.log('searchAndOpenRecords error', e));
       };
 
       onCallEvent(call => {
@@ -136,6 +157,8 @@ setupOpenCti().then(() => {
           search(call);
         }
       });
+
+      onContactSelectedEvent(({ contact }) => openRecord(contact.id, contact.type));
 
       onCallRecordedEvent(record => {
         console.log('call recorded', record);
