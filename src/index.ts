@@ -111,21 +111,34 @@ setupOpenCti().then(() => {
         void Microsoft.CIFramework.searchAndOpenRecords(type, `?$filter=${type}id eq ${id}`, false);
       };
 
+      const searchContacts = (phone: string) => {
+        let query = `?$select=fullname,mobilephone&$filter=mobilephone eq '${phone}' or telephone1 eq '${phone}'&$search=${phone}`;
+
+        return Microsoft.CIFramework.searchAndOpenRecords('contact', query, false)
+          .then(result => {
+            console.log('searchContacts', result)
+            return Object.values(JSON.parse(result)).map(mapContactResult);
+          })
+      };
+
+      const searchAccounts = (phone: string) => {
+        let query = `?$select=name,telephone1&$filter=telephone1 eq '${phone}'&$search=${phone}`;
+
+        return Microsoft.CIFramework.searchAndOpenRecords('account', query, false)
+          .then(result => {
+            console.log('searchAccounts', result)
+            return Object.values(JSON.parse(result)).map(mapAccountResult);
+          })
+      };
+
       const search = (call: Call, create = true) => {
         const phone = call.partyNumber;
-        let contactsQuery = `?$select=fullname,mobilephone&$filter=mobilephone eq '${phone}' or telephone1 eq '${phone}'&$search=${phone}`;
-        let accountsQuery = `?$select=name,telephone1&$filter=telephone1 eq '${phone}'&$search=${phone}`;
 
-        Promise.all([
-          Microsoft.CIFramework.searchAndOpenRecords('contact', contactsQuery, false)
-            .then(result => Object.values(JSON.parse(result)).map(mapContactResult)),
-          Microsoft.CIFramework.searchAndOpenRecords('account', accountsQuery, false)
-            .then(result => Object.values(JSON.parse(result)).map(mapAccountResult)),
-        ])
+        Promise.all([searchContacts(phone), searchAccounts(phone)])
           .then(([contact, account]) => {
             const allContacts = [...contact, ...account];
 
-            console.log('searchAndOpenRecords', allContacts);
+            console.log('search', allContacts);
 
             if (allContacts.length > 0) {
               fireCallInfoEvent(call, allContacts);
@@ -134,11 +147,11 @@ setupOpenCti().then(() => {
                 .then(value => {
                   const record = JSON.parse(value);
                   console.log('createRecord', record);
-                  search(call, false);
+                  searchContacts(phone).then(contact => fireCallInfoEvent(call, contact));
                 });
             }
           })
-          .catch(e => console.log('searchAndOpenRecords error', e));
+          .catch(e => console.log('search error', e));
       };
 
       onCallEvent(call => {
