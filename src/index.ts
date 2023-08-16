@@ -56,7 +56,7 @@ setupOpenCti().then(() => {
       Microsoft.CIFramework.addHandler('onclicktoact', payload => {
         console.log('onclicktoact', payload);
         const params = JSON.parse(payload) as ClickToActPayload;
-        clickData = params;
+        if (['account', 'contact'].includes(params.entityLogicalName)) clickData = params;
         fireMakeCallEvent(params.value);
       });
 
