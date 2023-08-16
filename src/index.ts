@@ -45,6 +45,7 @@ setupOpenCti().then(() => {
        onCallEvent,
        onLogEvent,
        onContactSelectedEvent,
+       onDuplicateContactCallAnsweredEvent,
      }) => {
       let clickData: ClickToActPayload | undefined;
       let currentCall: Call | undefined;
@@ -168,6 +169,8 @@ setupOpenCti().then(() => {
           })
           .catch(e => console.log('search error', e));
       });
+
+      onDuplicateContactCallAnsweredEvent(({ contact }) => contact && openRecord(contact.id, contact.type));
 
       onContactSelectedEvent(({ contact }) => openRecord(contact.id, contact.type));
 
