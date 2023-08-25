@@ -91,7 +91,7 @@ setupOpenCti().then(() => {
           currentCall = undefined;
         }
 
-        if (clickData?.value === call.partyNumber) {
+        if (clickData?.value.replace(/\D/g, '') === call.partyNumber) {
           clickData = undefined;
         }
       });
@@ -139,7 +139,7 @@ setupOpenCti().then(() => {
         void Microsoft.CIFramework.setMode(1);
         const phone = call.partyNumber;
 
-        if (phone === clickData?.value) {
+        if (phone === clickData?.value.replace(/\D/g, '')) {
           fireCallInfoEvent(call, {
             id: clickData.entityId,
             name: clickData.recordTitle,
