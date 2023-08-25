@@ -52,6 +52,13 @@ setupOpenCti().then(() => {
       let environment: Environment;
       const callRecordingURLs = new Map<string, string>();
 
+      const isClickedNumber = (number: string) => {
+        if (!clickData) return false;
+        const { value } = clickData;
+
+        return [value, value.replace(/[^+\d]/g, '')].includes(number);
+      };
+
       // add click-to-call listener
       Microsoft.CIFramework.addHandler('onclicktoact', payload => {
         console.log('onclicktoact', payload);
@@ -91,7 +98,7 @@ setupOpenCti().then(() => {
           currentCall = undefined;
         }
 
-        if (clickData?.value.replace(/\D/g, '') === call.partyNumber) {
+        if (isClickedNumber(call.partyNumber)) {
           clickData = undefined;
         }
       });
@@ -139,11 +146,11 @@ setupOpenCti().then(() => {
         void Microsoft.CIFramework.setMode(1);
         const phone = call.partyNumber;
 
-        if (phone === clickData?.value.replace(/\D/g, '')) {
+        if (isClickedNumber(phone)) {
           fireCallInfoEvent(call, {
-            id: clickData.entityId,
-            name: clickData.recordTitle,
-            type: clickData.entityLogicalName,
+            id: clickData!.entityId,
+            name: clickData!.recordTitle,
+            type: clickData!.entityLogicalName,
           });
 
           return;
