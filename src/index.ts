@@ -122,7 +122,7 @@ setupOpenCti().then(() => {
       const searchContacts = (phone: string) => {
         let query = `?$select=fullname,mobilephone&$filter=mobilephone eq '${phone}' or telephone1 eq '${phone}'&$search=${phone}`;
 
-        return Microsoft.CIFramework.searchAndOpenRecords('contact', query, false)
+        return Microsoft.CIFramework.searchAndOpenRecords('contact', query, true)
           .then(result => {
             console.log('searchContacts', result)
             return Object.values(JSON.parse(result)).map(mapContactResult);
@@ -132,7 +132,7 @@ setupOpenCti().then(() => {
       const searchAccounts = (phone: string) => {
         let query = `?$select=name,telephone1&$filter=telephone1 eq '${phone}'&$search=${phone}`;
 
-        return Microsoft.CIFramework.searchAndOpenRecords('account', query, false)
+        return Microsoft.CIFramework.searchAndOpenRecords('account', query, true)
           .then(result => {
             console.log('searchAccounts', result)
             return Object.values(JSON.parse(result)).map(mapAccountResult);
@@ -164,6 +164,7 @@ setupOpenCti().then(() => {
 
             if (allContacts.length > 0) {
               fireCallInfoEvent(call, allContacts);
+              openRecord(allContacts[0].id, allContacts[0].type);
               return;
             }
 
@@ -171,7 +172,9 @@ setupOpenCti().then(() => {
               .then(value => {
                 const record = JSON.parse(value);
                 console.log('createRecord', record);
-                searchContacts(phone).then(contact => fireCallInfoEvent(call, contact));
+                openRecord(record.id);
+                fireCallInfoEvent(call, { id: record.id, name: 'New Contact', type: 'contact' });
+                // searchContacts(phone).then(contact => fireCallInfoEvent(call, contact));
               });
           })
           .catch(e => console.log('search error', e));
