@@ -106,18 +106,6 @@ setupOpenCti().then(() => {
         }
       });
 
-      const mapContactResult = (contact: any): Contact => ({
-        id: contact.contactid,
-        name: contact.fullname,
-        type: 'contact',
-      });
-
-      const mapAccountResult = (account: any): Contact => ({
-        id: account.accountid,
-        name: account.name,
-        type: 'account',
-      });
-
       const openRecord = (id: string, type: string = 'contact') => {
         void Microsoft.CIFramework.searchAndOpenRecords(type, `?$filter=${type}id eq ${id}`, false);
       };
@@ -243,6 +231,18 @@ setupOpenCti().then(() => {
       });
     },
   );
+});
+
+const mapContactResult = (contact: any): Contact => ({
+  id: contact.contactid,
+  name: contact.fullname,
+  type: 'contact',
+});
+
+const mapAccountResult = (account: any): Contact => ({
+  id: account.accountid,
+  name: account.name,
+  type: 'account',
 });
 
 const logName = 'brekeke-widget:dynamics';
