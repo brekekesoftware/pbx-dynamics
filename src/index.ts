@@ -13,7 +13,7 @@ const setupOpenCti = () => {
     script.src = scriptSrc;
     script.type = 'text/javascript';
     script.onload = () => {
-      console.log('opencti ready');
+      logger('opencti ready');
       resolve();
     };
 
@@ -27,7 +27,7 @@ const setupOpenCti = () => {
 };
 
 window.addEventListener('CIFInitDone', evt => {
-  console.log('CIFInitDone', evt);
+  logger('CIFInitDone', evt);
 });
 
 setupOpenCti().then(() => {
@@ -63,23 +63,23 @@ setupOpenCti().then(() => {
 
       // add click-to-call listener
       Microsoft.CIFramework.addHandler('onclicktoact', payload => {
-        console.log('onclicktoact', payload);
+        logger('onclicktoact', payload);
         const params = JSON.parse(payload) as ClickToActPayload;
         if (['account', 'contact'].includes(params.entityLogicalName)) clickData = params;
         fireMakeCallEvent(params.value);
       });
 
       onLoggedInEvent(() => {
-        console.log('logged in! enable click to act');
+        logger('logged in! enable click to act');
         void Microsoft.CIFramework.setClickToAct(true)
           .then(
-            () => console.log('click to act enabled'),
-            () => console.log('click to act enable failed'),
+            () => logger('click to act enabled'),
+            () => logger('click to act enable failed'),
           );
 
         Microsoft.CIFramework.getEnvironment().then(res => {
           environment = JSON.parse(res);
-          console.log('environment', environment);
+          logger('environment', environment);
         });
       });
 
@@ -87,11 +87,11 @@ setupOpenCti().then(() => {
         currentCall = undefined;
         callRecordingURLs.clear();
         calls.length = 0;
-        console.log('logged out! disable click to act');
+        logger('logged out! disable click to act');
         void Microsoft.CIFramework.setClickToAct(false)
           .then(
-            () => console.log('click to act disabled'),
-            () => console.log('click to act disable failed'),
+            () => logger('click to act disabled'),
+            () => logger('click to act disable failed'),
           );
       });
 
@@ -127,7 +127,7 @@ setupOpenCti().then(() => {
 
         return Microsoft.CIFramework.searchAndOpenRecords('contact', query, true)
           .then(result => {
-            console.log('searchContacts', result)
+            logger('searchContacts', result)
             return Object.values(JSON.parse(result)).map(mapContactResult);
           })
       };
@@ -137,14 +137,14 @@ setupOpenCti().then(() => {
 
         return Microsoft.CIFramework.searchAndOpenRecords('account', query, true)
           .then(result => {
-            console.log('searchAccounts', result)
+            logger('searchAccounts', result)
             return Object.values(JSON.parse(result)).map(mapAccountResult);
           })
       };
 
       onCallUpdatedEvent(call => {
-        // console.log('onCallEvent', call);
-        console.log('onCallUpdatedEvent', { ...call });
+        // logger('onCallEvent', call);
+        logger('onCallUpdatedEvent', { ...call });
 
         if (calls.includes(call.pbxRoomId)) return;
         calls.push(call.pbxRoomId);
@@ -159,7 +159,7 @@ setupOpenCti().then(() => {
             name: clickData!.recordTitle,
             type: clickData!.entityLogicalName,
           };
-          console.log('isClickedNumber', info);
+          logger('isClickedNumber', info);
           fireCallInfoEvent(call, info);
 
           return;
@@ -169,7 +169,7 @@ setupOpenCti().then(() => {
           .then(([contact, account]) => {
             const allContacts = [...contact, ...account];
 
-            console.log('search', allContacts);
+            logger('search', allContacts);
 
             if (allContacts.length > 0) {
               fireCallInfoEvent(call, allContacts);
@@ -180,13 +180,13 @@ setupOpenCti().then(() => {
             Microsoft.CIFramework.createRecord('contact', JSON.stringify({ mobilephone: phone }))
               .then(value => {
                 const record = JSON.parse(value);
-                console.log('createRecord', record);
+                logger('createRecord', record);
                 openRecord(record.id);
                 fireCallInfoEvent(call, { id: record.id, name: 'New Contact', type: 'contact' });
                 // searchContacts(phone).then(contact => fireCallInfoEvent(call, contact));
               });
           })
-          .catch(e => console.log('search error', e));
+          .catch(e => logger('search error', e));
       });
 
       onDuplicateContactCallAnsweredEvent(({ contact }) => contact && openRecord(contact.id, contact.type));
@@ -194,12 +194,12 @@ setupOpenCti().then(() => {
       onContactSelectedEvent(({ contact }) => openRecord(contact.id, contact.type));
 
       onCallRecordedEvent(record => {
-        console.log('call recorded', record);
+        logger('call recorded', record);
         callRecordingURLs.set(record.roomId, record.recordingURL);
       });
 
       onLogEvent(log => {
-        console.log('logEvent', log);
+        logger('logEvent', log);
         const call = log.call;
 
         Microsoft.CIFramework.createRecord(
@@ -233,7 +233,7 @@ setupOpenCti().then(() => {
             fireLogSavedEvent(log);
             callRecordingURLs.delete(call.pbxRoomId);
             const record = JSON.parse(value);
-            console.log('createRecord', record);
+            logger('createRecord', record);
           })
           .catch(reason => {
             const error = typeof reason === 'string' ? JSON.parse(reason) : reason;
@@ -245,10 +245,14 @@ setupOpenCti().then(() => {
   );
 });
 
-const formatRecordName = (name: string, type: string) => `[${type}] ${name}`;
-
-const formatDate = (date: Date) => {
-  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+const logName = 'brekeke-widget:dynamics';
+const logger = (...args: unknown[]) => {
+  if (!location.host.startsWith('localhost') && !location.host.startsWith('127.0.0.1')) return;
+  if (typeof args[0] === 'string' && args[0].includes('error')) {
+    console.error(logName, ...args);
+    return;
+  }
+  console.log(logName, ...args);
 };
 
 // {"value":"619-555-0129","name":"mobilephone","format":"Phone","entityLogicalName":"contact","entityId":"80ac35a0-01af-ea11-a812-000d3a8b3ec6","recordTitle":"Alex Baker"}
