@@ -37,6 +37,7 @@ setupOpenCti().then(() => {
        fireCallInfoEvent,
        fireLogSavedEvent,
        fireMakeCallEvent,
+       fireNotification,
        onCallRecordedEvent,
        onCallUpdatedEvent,
        onCallEndedEvent,
@@ -225,6 +226,11 @@ setupOpenCti().then(() => {
             callRecordingURLs.delete(call.pbxRoomId);
             const record = JSON.parse(value);
             console.log('createRecord', record);
+          })
+          .catch(reason => {
+            const error = typeof reason === 'string' ? JSON.parse(reason) : reason;
+            const message = error?.value?.errorMsg;
+            if (message) fireNotification({ message, type: 'error' });
           });
       });
     },
