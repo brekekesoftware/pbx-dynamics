@@ -51,6 +51,7 @@ setupOpenCti().then(() => {
       let clickData: ClickToActPayload | undefined;
       let currentCall: Call | undefined;
       let environment: Environment;
+      const calls: string[] = [];
       const callRecordingURLs = new Map<string, string>();
 
       const isClickedNumber = (number: string) => {
@@ -85,6 +86,7 @@ setupOpenCti().then(() => {
       onLoggedOutEvent(() => {
         currentCall = undefined;
         callRecordingURLs.clear();
+        calls.length = 0;
         console.log('logged out! disable click to act');
         void Microsoft.CIFramework.setClickToAct(false)
           .then(
@@ -93,9 +95,9 @@ setupOpenCti().then(() => {
           );
       });
 
-      onCallUpdatedEvent(call => void (currentCall = call));
+      onCallEvent(call => void (currentCall = call));
       onCallEndedEvent(call => {
-        if (call.id === currentCall?.id) {
+        if (call.pbxRoomId === currentCall?.pbxRoomId) {
           currentCall = undefined;
         }
 
@@ -140,19 +142,25 @@ setupOpenCti().then(() => {
           })
       };
 
-      onCallEvent(call => {
-        console.log('onCallEvent', call);
+      onCallUpdatedEvent(call => {
+        // console.log('onCallEvent', call);
+        console.log('onCallUpdatedEvent', { ...call });
+
+        if (calls.includes(call.pbxRoomId)) return;
+        calls.push(call.pbxRoomId);
 
         // dock the panel
         void Microsoft.CIFramework.setMode(1);
         const phone = call.partyNumber;
 
         if (isClickedNumber(phone)) {
-          fireCallInfoEvent(call, {
+          const info: Contact = {
             id: clickData!.entityId,
             name: clickData!.recordTitle,
             type: clickData!.entityLogicalName,
-          });
+          };
+          console.log('isClickedNumber', info);
+          fireCallInfoEvent(call, info);
 
           return;
         }
