@@ -106,30 +106,6 @@ setupOpenCti().then(() => {
         }
       });
 
-      const openRecord = (id: string, type: string = 'contact') => {
-        void Microsoft.CIFramework.searchAndOpenRecords(type, `?$filter=${type}id eq ${id}`, false);
-      };
-
-      const searchContacts = (phone: string) => {
-        let query = `?$select=fullname,mobilephone&$filter=mobilephone eq '${phone}' or telephone1 eq '${phone}'&$search=${phone}`;
-
-        return Microsoft.CIFramework.searchAndOpenRecords('contact', query, true)
-          .then(result => {
-            logger('searchContacts', result)
-            return Object.values(JSON.parse(result)).map(mapContactResult);
-          })
-      };
-
-      const searchAccounts = (phone: string) => {
-        let query = `?$select=name,telephone1&$filter=telephone1 eq '${phone}'&$search=${phone}`;
-
-        return Microsoft.CIFramework.searchAndOpenRecords('account', query, true)
-          .then(result => {
-            logger('searchAccounts', result)
-            return Object.values(JSON.parse(result)).map(mapAccountResult);
-          })
-      };
-
       onCallUpdatedEvent(call => {
         // logger('onCallEvent', call);
         logger('onCallUpdatedEvent', { ...call });
@@ -244,6 +220,30 @@ const mapAccountResult = (account: any): Contact => ({
   name: account.name,
   type: 'account',
 });
+
+const openRecord = (id: string, type: string = 'contact') => {
+  void Microsoft.CIFramework.searchAndOpenRecords(type, `?$filter=${type}id eq ${id}`, false);
+};
+
+const searchContacts = (phone: string) => {
+  let query = `?$select=fullname,mobilephone&$filter=mobilephone eq '${phone}' or telephone1 eq '${phone}'&$search=${phone}`;
+
+  return Microsoft.CIFramework.searchAndOpenRecords('contact', query, true)
+    .then(result => {
+      logger('searchContacts', result)
+      return Object.values(JSON.parse(result)).map(mapContactResult);
+    })
+};
+
+const searchAccounts = (phone: string) => {
+  let query = `?$select=name,telephone1&$filter=telephone1 eq '${phone}'&$search=${phone}`;
+
+  return Microsoft.CIFramework.searchAndOpenRecords('account', query, true)
+    .then(result => {
+      logger('searchAccounts', result)
+      return Object.values(JSON.parse(result)).map(mapAccountResult);
+    })
+};
 
 const logName = 'brekeke-widget:dynamics';
 const logger = (...args: unknown[]) => {
