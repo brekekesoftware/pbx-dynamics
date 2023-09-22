@@ -1,4 +1,4 @@
-import { Contact } from '@core/types/events';
+import { Contact, Log } from '@core/types/events';
 import { Call } from '@core/types/phone';
 
 const getCRMHost = () => new URL(location.href).searchParams.get('crm');
@@ -35,10 +35,10 @@ setupOpenCti().then(() => {
     document.getElementById('widget_embed_div')!,
     ({
        fireCallInfoEvent,
+       fireConfigEvent,
        fireLogSavedEvent,
        fireMakeCallEvent,
        fireNotification,
-       onCallRecordedEvent,
        onCallUpdatedEvent,
        onCallEndedEvent,
        onLoggedOutEvent,
@@ -52,7 +52,6 @@ setupOpenCti().then(() => {
       let currentCall: Call | undefined;
       let environment: Environment;
       const calls: string[] = [];
-      const callRecordingURLs = new Map<string, string>();
 
       const isClickedNumber = (number: string) => {
         if (!clickData) return false;
@@ -60,6 +59,28 @@ setupOpenCti().then(() => {
 
         return [value, value.replace(/[^+\d]/g, '')].includes(number);
       };
+
+      fireConfigEvent({
+        logInputs: [
+          {
+            label: 'Subject',
+            name: 'subject',
+            type: 'text',
+            required: true,
+            defaultValue: call => `Call on ${new Date(call.createdAt).toUTCString()}`,
+          },
+          {
+            label: 'Description',
+            name: 'description',
+            type: 'textarea',
+          },
+          {
+            label: 'Result',
+            name: 'result',
+            type: 'text',
+          },
+        ],
+      });
 
       // add click-to-call listener
       Microsoft.CIFramework.addHandler('onclicktoact', payload => {
@@ -85,7 +106,6 @@ setupOpenCti().then(() => {
 
       onLoggedOutEvent(() => {
         currentCall = undefined;
-        callRecordingURLs.clear();
         calls.length = 0;
         logger('logged out! disable click to act');
         void Microsoft.CIFramework.setClickToAct(false)
@@ -110,8 +130,9 @@ setupOpenCti().then(() => {
         // logger('onCallEvent', call);
         logger('onCallUpdatedEvent', { ...call });
 
-        if (calls.includes(call.pbxRoomId)) return;
-        calls.push(call.pbxRoomId);
+        const callId = `${call.pbxRoomId}-${call.id}`;
+        if (calls.includes(callId)) return;
+        calls.push(callId);
 
         // dock the panel
         void Microsoft.CIFramework.setMode(1);
@@ -141,12 +162,12 @@ setupOpenCti().then(() => {
               return;
             }
 
-            Microsoft.CIFramework.createRecord('contact', JSON.stringify({ mobilephone: phone }))
+            Microsoft.CIFramework.createRecord('contact', JSON.stringify({ mobilephone: phone, firstname: 'Caller', lastname: phone }))
               .then(value => {
                 const record = JSON.parse(value);
                 logger('createRecord', record);
                 openRecord(record.id);
-                fireCallInfoEvent(call, { id: record.id, name: 'New Contact', type: 'contact' });
+                fireCallInfoEvent(call, { id: record.id, name: `Caller ${phone}`, type: 'contact' });
                 // searchContacts(phone).then(contact => fireCallInfoEvent(call, contact));
               });
           })
@@ -157,21 +178,23 @@ setupOpenCti().then(() => {
 
       onContactSelectedEvent(({ contact }) => openRecord(contact.id, contact.type));
 
-      onCallRecordedEvent(record => {
-        logger('call recorded', record);
-        callRecordingURLs.set(record.roomId, record.recordingURL);
-      });
-
       onLogEvent(log => {
         logger('logEvent', log);
+
+        if (!log.contactId) {
+          fireNotification({ type: 'error', message: 'This call was not associated with a contact.' });
+          return;
+        }
+
         const call = log.call;
+        const { subject, description, result } = log.inputs;
 
         Microsoft.CIFramework.createRecord(
           'phonecall',
           JSON.stringify({
-            subject: log.subject,
-            description: log.comment,
-            new_result: log.result,
+            subject,
+            description,
+            new_result: result,
             directioncode: !call.incoming,
             phonenumber: call.partyNumber,
             actualdurationminutes: Math.trunc(log.duration / 1000 / 60),
@@ -185,17 +208,16 @@ setupOpenCti().then(() => {
               },
               {
                 participationtypemask: call.incoming ? 1 : 2,
-                [`partyid_${log.recordType}@odata.bind`]: `/${log.recordType}s(${log.recordId})`,
+                [`partyid_${log.contactType}@odata.bind`]: `/${log.contactType}s(${log.contactId})`,
               },
             ],
-            new_recordingfile: callRecordingURLs.get(call.pbxRoomId),
+            new_recordingfile: log.recording?.url,
 
             // statecode: 'Completed',
           }),
         )
           .then(value => {
             fireLogSavedEvent(log);
-            callRecordingURLs.delete(call.pbxRoomId);
             const record = JSON.parse(value);
             logger('createRecord', record);
           })
