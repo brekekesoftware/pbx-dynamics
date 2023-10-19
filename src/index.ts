@@ -1,6 +1,12 @@
 import { Contact, Log } from '@core/types/events';
 import { Call } from '@core/types/phone';
 
+/**
+ * REFERENCES
+ * TRIAL: https://dynamics.microsoft.com/en-us/sales/sales-tool/free-trial/ https://dynamics.microsoft.com/en-us/dynamics-365-free-trial/
+ * CIF: https://learn.microsoft.com/en-us/dynamics365/customer-service/channel-integration-framework
+ */
+
 const getCRMHost = () => new URL(location.href).searchParams.get('crm');
 
 const setupOpenCti = () => {
@@ -106,6 +112,7 @@ setupOpenCti().then(() => {
 
       onLoggedOutEvent(() => {
         currentCall = undefined;
+        clickData = undefined;
         calls.length = 0;
         logger('logged out! disable click to act');
         void Microsoft.CIFramework.setClickToAct(false)
@@ -162,12 +169,20 @@ setupOpenCti().then(() => {
               return;
             }
 
-            Microsoft.CIFramework.createRecord('contact', JSON.stringify({ mobilephone: phone, firstname: 'Caller', lastname: phone }))
+            Microsoft.CIFramework.createRecord('contact', JSON.stringify({
+              mobilephone: phone,
+              firstname: 'Caller',
+              lastname: phone,
+            }))
               .then(value => {
                 const record = JSON.parse(value);
                 logger('createRecord', record);
                 openRecord(record.id);
-                fireCallInfoEvent(call, { id: record.id, name: `Caller ${phone}`, type: 'contact' });
+                fireCallInfoEvent(call, {
+                  id: record.id,
+                  name: `Caller ${phone}`,
+                  type: 'contact',
+                });
                 // searchContacts(phone).then(contact => fireCallInfoEvent(call, contact));
               });
           })
@@ -182,7 +197,10 @@ setupOpenCti().then(() => {
         logger('logEvent', log);
 
         if (!log.contactId) {
-          fireNotification({ type: 'error', message: 'This call was not associated with a contact.' });
+          fireNotification({
+            type: 'error',
+            message: 'This call was not associated with a contact.',
+          });
           return;
         }
 
@@ -195,6 +213,7 @@ setupOpenCti().then(() => {
             subject,
             description,
             new_result: result,
+            new_recordingfile: log.recording?.url,
             directioncode: !call.incoming,
             phonenumber: call.partyNumber,
             actualdurationminutes: Math.trunc(log.duration / 1000 / 60),
@@ -211,7 +230,6 @@ setupOpenCti().then(() => {
                 [`partyid_${log.contactType}@odata.bind`]: `/${log.contactType}s(${log.contactId})`,
               },
             ],
-            new_recordingfile: log.recording?.url,
 
             // statecode: 'Completed',
           }),
@@ -222,6 +240,7 @@ setupOpenCti().then(() => {
             logger('createRecord', record);
           })
           .catch(reason => {
+            logger('createRecord error', reason);
             const error = typeof reason === 'string' ? JSON.parse(reason) : reason;
             const message = error?.value?.errorMsg;
             if (message) fireNotification({ message, type: 'error' });
@@ -244,27 +263,38 @@ const mapAccountResult = (account: any): Contact => ({
 });
 
 const openRecord = (id: string, type: string = 'contact') => {
-  void Microsoft.CIFramework.searchAndOpenRecords(type, `?$filter=${type}id eq ${id}`, false);
+  logger('openRecord', { id, type });
+  void Microsoft.CIFramework.searchAndOpenRecords(type, `?$filter=${type}id eq ${id}`, false)
+    .then(response => logger('openRecord success', response))
+    .catch(reason => logger('openRecord error', reason));
 };
 
-const searchContacts = (phone: string) => {
-  let query = `?$select=fullname,mobilephone&$filter=mobilephone eq '${phone}' or telephone1 eq '${phone}'&$search=${phone}`;
+const wildcard = '%'; // %25
+const formatSearchPhone = (phone: string) => {
+  const search = phone.split('').join(wildcard);
+  return wildcard + search + wildcard;
+};
+
+const searchContacts = (phone: string): Promise<Contact[]> => {
+  const search = formatSearchPhone(phone);
+  let query = `?$select=fullname,mobilephone&$filter=contains(mobilephone, '${search}') or contains(telephone1, '${search}')&$search=${phone}`;
 
   return Microsoft.CIFramework.searchAndOpenRecords('contact', query, true)
     .then(result => {
-      logger('searchContacts', result)
+      logger('searchContacts', result);
       return Object.values(JSON.parse(result)).map(mapContactResult);
-    })
+    });
 };
 
 const searchAccounts = (phone: string) => {
-  let query = `?$select=name,telephone1&$filter=telephone1 eq '${phone}'&$search=${phone}`;
+  const search = formatSearchPhone(phone);
+  let query = `?$select=name,telephone1&$filter=contains(telephone1, '${search}')&$search=${phone}`;
 
   return Microsoft.CIFramework.searchAndOpenRecords('account', query, true)
     .then(result => {
-      logger('searchAccounts', result)
+      logger('searchAccounts', result);
       return Object.values(JSON.parse(result)).map(mapAccountResult);
-    })
+    });
 };
 
 const logName = 'brekeke-widget:dynamics';
