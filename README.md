@@ -15,7 +15,7 @@ Microsoft Dynamics 365 Integration for the PBX Widget.
 1. Install and configure Channel Integration Framework
    - Login into Dynamic365 using admin account.
    - Go to Settings => Customizations => Microsoft AppSource.
-   - ![Image](docs/widget/%231.png)
+   - ![Image](docs/widget/#1.png)
    - Find Channel integration in the search bar, double-click on the item and then install it by clicking GET IT NOW
    - ![Image](docs/widget/%232.png)
    - Accept the term and condition and remember to choose the targeted environment:
