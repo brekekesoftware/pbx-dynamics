@@ -42,6 +42,7 @@ setupOpenCti().then(() => {
     ({
        fireCallInfoEvent,
        fireConfigEvent,
+       fireLogFailedEvent,
        fireLogSavedEvent,
        fireMakeCallEvent,
        fireNotification,
@@ -240,6 +241,7 @@ setupOpenCti().then(() => {
             logger('createRecord', record);
           })
           .catch(reason => {
+            fireLogFailedEvent(log);
             logger('createRecord error', reason);
             const error = typeof reason === 'string' ? JSON.parse(reason) : reason;
             const message = error?.value?.errorMsg;
